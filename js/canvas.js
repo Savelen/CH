@@ -18,7 +18,7 @@ function dataCanvas(can, arrel = new Map(), activ = new Map()) {
 		time: Date.now(),
 		timeCount: 0,
 		fps: 0,
-		lock: 30,
+		lock: 60,
 		lockCount: 0,
 		// рисуем всё или 1 обьект (по имени или обЪекту) используя на drawEL
 		draw: function (element = false) {
@@ -93,7 +93,7 @@ function dataCanvas(can, arrel = new Map(), activ = new Map()) {
 				if (conf.type == "f") this.ctx.fill();
 				else this.ctx.stroke();
 			}
-			else if (el.type = 'u') {
+			else if (el.type = 'c') {
 				el.arrObj.forEach((e) => {
 					this.draw(e);
 				});
@@ -256,7 +256,7 @@ function dataCanvas(can, arrel = new Map(), activ = new Map()) {
 		// добавляет элемент в отслеживаемые (active)
 		activeEl: function (data) {
 			data = (typeof data == 'object') ? data : (typeof data == 'string') ? this.elements.get(data) : {};
-			if (data.type == 'u') {
+			if (data.type == 'c') {
 				data.arrObj.forEach((e) => {
 					this.activeEl(e);
 				});
@@ -323,9 +323,11 @@ function dataCanvas(can, arrel = new Map(), activ = new Map()) {
 								if (rs.indexOf(e.name) == -1 && !(e.x1 == bx && e.y1 == py) && !(e.x2 == bx && e.y2 == py)) {
 									rs.push(e.name);
 									s = [bx, e.name];
+									// this.test(bx, py,'green');
 								}
 								else if (rs.indexOf(e.name) != -1) {
 									rs.splice(rs.indexOf(e.name), 1);
+									// this.test(bx, py, 'red',5,4);
 								}
 							}
 						});
@@ -361,21 +363,33 @@ function dataCanvas(can, arrel = new Map(), activ = new Map()) {
 			if (update) this.draw();
 		},
 		// обьелиняет элементы в один
-		combEl: function (name = false, objArr) {
+		combEl: function (name = false, objArr, genObj = false) {
 			let result = {};
 			if (name) result.name = name;
 			else result.name = this.makeid(32);
-			let arrObj = new Map();
+			result.arrObj = new Map();
+			result.genObj = new Map();
 			objArr.forEach((n) => {
 				if (this.elements.has(n)) {
 					let el = this.elements.get(n);
 					el.parent = result.name;
-					arrObj.set(n, el);
-					this.remove(n, false);
+					result.arrObj.set(n, el);
 				}
 			});
-			result.arrObj = arrObj;
-			result.type = 'u';
+			if (genObj) {
+				genObj.forEach((n) => {
+					if (this.elements.has(n)) {
+						let el = this.elements.get(n);
+						el.parent = result.name;
+						result.genObj.set(n, el);
+					}
+				});
+			}
+			else result.genObj = [];
+			objArr.forEach((n) => {
+				this.remove(n, false);
+			})
+			result.type = 'c';
 			this.elements.set(result.name, result);
 			this.draw();
 			return true;
@@ -405,11 +419,16 @@ can.drawObj([[1300, 300], [1000, 300], [1000, 500]], { name: 'прямоугол
 can.drawObj([[600, 100], [800, 100], [700, 200], [600, 300], [800, 300]], { name: "time", color: "aqua" });
 can.eventGo();
 
-can.combEl("Дом", ["Стены", "Крыша", "Окно 1", "Окно 2", "Дверь", "Стены", "Дверная ручка"]);
+// обьединяем элементы
+can.combEl("Дом", ["Стены", "Крыша", "Окно 1", "Окно 2", "Дверь", "Стены", "Дверная ручка"], ["Стены", "Крыша"]);
+// делаем элементы интерактивными
 can.activeEl("Дом");
+can.activeEl('time');
+// анимация
+can.roundDash("прямоугольник", 30, 100, [10, 15, 5]);
 
-can.roundDash("time", 30, 100, [10, 15, 5]);
 
+// делает все элементы активными
 // can.elements.forEach((e) => {
 // 	can.activeEl(e.name);
 // });
@@ -429,7 +448,7 @@ can.roundDash("time", 30, 100, [10, 15, 5]);
 /*
 ------------------------------------------------------------------------------------------------------------------
 let add = 5;
-let wName = (this.elements.has(winName)) ? this.elements.get(winName) : { type: 'u' };
+let wName = (this.elements.has(winName)) ? this.elements.get(winName) : { type: 'c' };
 let lName = this.elements.get(this.activeName);
 if (lName) {
 	if (lName.type == "l") {
