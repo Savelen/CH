@@ -6,10 +6,10 @@ function dataCanvas(can, arrel = new Map(), activ = new Map()) {
 		elements: arrel,
 		active: activ,
 		activeName: false,
-		activeId: '',
+		activeId: {},
 		check: true,
 		// отрисовка
-		lock: 60, // максимальное колличество отрисовок в 1 секунду
+		lock: 30, // максимальное колличество отрисовок в 1 секунду
 		time: Date.now(),
 		timeCount: 0,
 		fps: 0, // показатель отрисовок в 1 секунду
@@ -50,7 +50,9 @@ function dataCanvas(can, arrel = new Map(), activ = new Map()) {
 				}
 			}
 			if (show) {
+				// для теста
 				document.querySelector('.FPS').querySelector('span').textContent = this.fps;
+				// -----------------
 				this.fps = 0;
 				this.lockCount = 0;
 			}
@@ -58,7 +60,7 @@ function dataCanvas(can, arrel = new Map(), activ = new Map()) {
 		// ресует 1 обьект (по обЪекту)
 		drawEl: function (el) {
 			if (el.type == 'l') {
-				if (el.fill) {
+				if (el.fill === true) {
 					this.ctx.fillStyle = el.color;
 					this.ctx.fillRect(el.x, el.y, el.w, el.h);
 				}
@@ -92,7 +94,8 @@ function dataCanvas(can, arrel = new Map(), activ = new Map()) {
 				this.ctx.closePath();
 				if (conf.type == "f") this.ctx.fill();
 				else this.ctx.stroke();
-
+				// обнуляем lineDash у ctx
+				this.ctx.setLineDash([]);
 			}
 			else if (el.type = 'c') {
 				el.arrObj.forEach((e) => {
@@ -146,32 +149,31 @@ function dataCanvas(can, arrel = new Map(), activ = new Map()) {
 		},
 		//генерация id
 		makeid: function (length) {
-			let result = '';
-			let characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-			let charactersLength = characters.length;
-			for (let i = 0; i < length; i++) {
-				result += characters.charAt(Math.floor(Math.random() * charactersLength));
-			}
-			return result;
+			let name = '';
+			while (name.length < length) name += Math.random().toString(36).substring(2);
+			return name.substring(0, length);
 		},
 		// Ивент отслежувающий движение мыши ((и другие эвенты) надо организовать)
 		eventGo: function () {
 			this.canvas.addEventListener("mousemove", (event) => {
-				// this.draw();
 				let cy = Math.floor(this.canvas.offsetTop);
 				cy = (cy < 0) ? 0 : cy;
 				let y = Math.floor(event.pageY - cy);
 				let x = Math.floor(event.pageX - this.canvas.offsetLeft);
+				// для теста
 				document.querySelectorAll("span").forEach((s) => {
 					let py = (y < 0) ? Math.abs(y) : 0;
 					if (s.closest("div").className == "x") s.textContent = x + ` | ${event.pageX} |` + `${Math.floor(this.canvas.offsetLeft)}`;
 					if (s.closest("div").className == "y") s.textContent = Math.floor(y + py) + ` | ${event.pageY} | ${cy}`;
 				});
+				// -------------------
 				// определяем элемент
 				if (this.check) {
 					let chX = this.checkPointX(x, y, this.active, this.canvas.width);
 					let chXY = chX;
+					// для теста
 					document.querySelector(".act").querySelector("span").textContent = JSON.stringify(chXY);
+					// ------------------------
 					let stop = true;
 					let nameEl = new Map();
 					// считаем колличество элементов
@@ -285,29 +287,47 @@ function dataCanvas(can, arrel = new Map(), activ = new Map()) {
 		},
 		// анимация "бегающие муравьи" для обьектов типа "o"
 		roundDash: function (name, time = 30, st = 100, dash = [10, 3]) {
-			if (name) {
-				let t;
-				t = this.elements.get(name);
+			if (name && this.elements.has(name)) {
+				let el = this.elements.get(name);
 				if (time) {
 					let i = 0;
-					t.conf.dash = dash;
-					this.activeId = setInterval(() => {
-						t.conf.dashOffset = i;
-						this.elements.set(name, t);
-						this.draw();
-						i = (i == st) ? 0 : i + 1;
+					el.conf.dash = dash;
+					let id = setInterval(() => {
+						if (this.elements.has(name)) {
+							el.conf.dashOffset = i;
+							this.elements.set(name, el);
+							this.draw();
+							i = (i == st) ? 0 : i + 1;
+						} else {
+							clearInterval($id);
+						}
 					}, time);
+					this.activeId[name] = id;
 				}
 				else {
-					clearInterval(this.activeId);
-					t.conf.dash = [];
-					this.elements.set(name, t);
+					clearInterval(this.activeId[name]);
+					delete this.activeId[name];
+					el.conf.dash = [];
+					this.elements.set(name, el);
 					this.draw();
 				}
 			}
 			else {
-				clearInterval(this.activeId);
+				if (Object.keys(this.activeId).length > 0) {
+					for (const key in this.activeId) {
+						if (this.activeId.hasOwnProperty(key)) {
+							const id = this.activeId[key];
+							delete this.activeId[key];
+							clearInterval(id);
+							let el = this.elements.get(key);
+							el.conf.dash = [];
+							this.elements.set(name, el);
+						}
+					}
+					this.draw();
+				}
 			}
+			return this.activeId;
 		},
 		// проверяет над каким элементом находится данная точка
 		checkPointX: function (px, py, act, w) {
