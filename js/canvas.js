@@ -15,12 +15,12 @@ function dataCanvas(can, arrel = new Map(), activ = new Map()) {
 		fps: 0, // показатель отрисовок в 1 секунду
 		lockCount: 0,
 		// рисуем всё или 1 обьект (по имени или обЪекту) используя на drawEL
-		draw: function (element = false) {
+		draw: function (element = false, around = false) {
 			let show = false;
 			let time = Date.now() - this.time;
 			let timeNow = time - (this.timeCount * 1000);
 			let timePause = 1000 / this.lock;
-			if (!element && (timeNow >= (timePause * this.lockCount) && timeNow <= 1000)) {
+			if ((!element && (timeNow >= (timePause * this.lockCount) && timeNow <= 1000)) || around) {
 				this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 				this.elements.forEach((el) => {
 					this.drawEl(el);
@@ -74,6 +74,7 @@ function dataCanvas(can, arrel = new Map(), activ = new Map()) {
 				let obj = el.point;
 				this.ctx.beginPath();
 				this.ctx.strokeStyle = conf.color;
+				this.ctx.fillStyle = conf.color;
 				this.ctx.lineWidth = conf.widht;
 				this.ctx.lineCap = conf.cap;
 				this.ctx.lineJoin = conf.join;
@@ -92,7 +93,7 @@ function dataCanvas(can, arrel = new Map(), activ = new Map()) {
 					// this.test(p.x1, p.y1, "red", 5, 5);
 				}
 				this.ctx.closePath();
-				if (conf.type == "f") this.ctx.fill();
+				if (conf.fill) this.ctx.fill();
 				else this.ctx.stroke();
 				// обнуляем lineDash у ctx
 				this.ctx.setLineDash([]);
@@ -105,46 +106,50 @@ function dataCanvas(can, arrel = new Map(), activ = new Map()) {
 		},
 		//рисует линию и добавляет в список элементов с тмпом "l"
 		drawLine: function (el = false, x = 0, y = 0, w = 0, h = 0, color = 'black', fill = true) {
-			let name = this.makeid(32);
+			let name = el.hasOwnProperty('name') ? el.name : this.makeid(32);
 			let point = [];
+			let allPoint = new Map();
 			color = color ? color : "black";
+			el = (Object.keys(el).length > 1) ? { x: 0, y: 0, w: 0, h: 0, color: "black", name: name, fill: true, ...el } : false;
 			if (!el) {
 				point.push({ map: this.pointGet(x, x + w, y, y, name) });
 				point.push({ map: this.pointGet(x, x + w, y + h, y + h, name) });
 				point.push({ map: this.pointGet(x, x, y, y + h, name) });
 				point.push({ map: this.pointGet(x + w, x + w, y, y + h, name) });
-				this.elements.set(name, { name: name, type: 'l', y: y, x: x, w: w, h: h, color: color, fill: fill, point: point });
+				point.forEach(e => {
+					for (const key of e.map.keys()) allPoint.set(key, null);
+				});
+
+				this.elements.set(name, { name: name, type: 'l', y: y, x: x, w: w, h: h, color: color, fill: fill, point: point, allPoint: allPoint });
 			}
-			else if (!el.hasOwnProperty("name")) {
-				point.push({ map: this.pointGet(el.x, el.x + el.w, el.y, el.y, name) });
-				point.push({ map: this.pointGet(el.x, el.x + el.w, el.y + el.h, el.y + el.h, name) });
-				point.push({ map: this.pointGet(el.x, el.x, el.y, el.y + el.h, name) });
-				point.push({ map: this.pointGet(el.x + el.w, x + el.w, el.y, el.y + el.h, name) });
-				this.elements.set(name, { name: name, type: 'l', y: el.y, x: el.x, w: el.w, h: el.h, color: el.color, fill: el.fill, point: point });
-			}
-			else if (el.hasOwnProperty("name")) {
+			else {
 				point.push({ map: this.pointGet(el.x, el.x + el.w, el.y, el.y, el.name) });
 				point.push({ map: this.pointGet(el.x, el.x + el.w, el.y + el.h, el.y + el.h, el.name) });
 				point.push({ map: this.pointGet(el.x, el.x, el.y, el.y + el.h, el.name) });
-				point.push({ map: this.pointGet(el.x + el.w, x + el.w, el.y, el.y + el.h, el.name) });
-				this.elements.set(el.name, { name: el.name, type: 'l', y: el.y, x: el.x, w: el.w, h: el.h, color: el.color, fill: el.fill, point: point });
+				point.push({ map: this.pointGet(el.x + el.w, el.x + el.w, el.y, el.y + el.h, el.name) });
+				point.forEach(e => {
+					for (const key of e.map.keys()) allPoint.set(key, null);
+				});
+				this.elements.set(el.name, { name: el.name, type: 'l', y: el.y, x: el.x, w: el.w, h: el.h, color: el.color, fill: el.fill, point: point, allPoint: allPoint });
 			}
 			this.draw(this.elements.get(name));
 		},
 		//рисует обьект по точкам и добавляет в список элементов с тмпом "o"
-		drawObj: function (obj, conf = { default: true, type: 's', color: "black", widht: 1, name: false, cap: 'butt', join: 'round', limit: 1, dash: [], dashOffset: 0 }) {
-			conf = conf.default ? conf : { type: 's', color: "black", widht: 1, name: false, cap: 'butt', join: 'round', limit: 1, dash: [], dashOffset: 0, ...conf };
+		drawObj: function (obj, conf = { fill: false, color: "black", widht: 1, name: false, cap: 'butt', join: 'round', limit: 1, dash: [], dashOffset: 0 }) {
+			conf = { fill: false, color: "black", widht: 1, name: false, cap: 'butt', join: 'round', limit: 1, dash: [], dashOffset: 0, ...conf };
 			conf.name = conf.name ? conf.name : this.makeid(32);
 			let pointArr = [];
+			let allPoint = new Map();
 			for (let i = 0; i < obj.length; i++) {
 				let p1 = obj[i], p2;
 				// для функции нахождения точек
 				if (obj.length - i == 1) p2 = obj[0];
 				else p2 = obj[i + 1];
 				let map = this.pointGet(p1[0], p2[0], p1[1], p2[1], conf.name);
+				for (const key of map.keys()) allPoint.set(key, null);
 				pointArr.push({ x1: p1[0], y1: p1[1], x2: p2[0], y2: p2[1], map: map });
 			}
-			this.elements.set(conf.name, { name: conf.name, type: 'o', point: pointArr, conf: conf });
+			this.elements.set(conf.name, { name: conf.name, type: 'o', point: pointArr, allPoint: allPoint, conf: conf });
 			this.draw(this.elements.get(conf.name));
 		},
 		//генерация id
@@ -249,10 +254,10 @@ function dataCanvas(can, arrel = new Map(), activ = new Map()) {
 				}
 				// начальные и конечные кординаты
 				if (name) {
-					arr.set(x, { y: arrY, name: name, x1: x1, y1: y1, x2: x2, y2: y2 });
+					arr.set(x, { y: arrY, name: name });
 				}
 				else {
-					arr.set(x, { y: arrY, x1: x1, y1: y1, x2: x2, y2: y2 });
+					arr.set(x, { y: arrY });
 				}
 			}
 			return arr;
@@ -261,8 +266,8 @@ function dataCanvas(can, arrel = new Map(), activ = new Map()) {
 		activeEl: function (data) {
 			data = (typeof data == 'object') ? data : (typeof data == 'string') ? this.elements.get(data) : {};
 			if (data.type == 'c') {
-				data.arrObj.forEach((e) => {
-					this.activeEl(e);
+				data.genObj.forEach((e) => {
+					this.activeEl(data.arrObj.get(e));
 				});
 			} else {
 				data.point.forEach((point) => {
@@ -281,7 +286,7 @@ function dataCanvas(can, arrel = new Map(), activ = new Map()) {
 								}
 							}
 						}
-					})
+					});
 				});
 			}
 		},
@@ -292,24 +297,32 @@ function dataCanvas(can, arrel = new Map(), activ = new Map()) {
 				if (time) {
 					let i = 0;
 					el.conf.dash = dash;
-					let id = setInterval(() => {
-						if (this.elements.has(name)) {
-							el.conf.dashOffset = i;
-							this.elements.set(name, el);
-							this.draw();
-							i = (i == st) ? 0 : i + 1;
-						} else {
-							clearInterval($id);
-						}
-					}, time);
-					this.activeId[name] = id;
+					if (!this.activeId.hasOwnProperty(name)) {
+						let id = setInterval(() => {
+							try {
+								if (this.elements.has(name)) {
+									el.conf.dashOffset = i;
+									this.elements.set(name, el);
+									this.draw();
+									i = (i == st) ? 0 : i + 1;
+								} else {
+								}
+							}
+							catch (err) { clearInterval($id); }
+						}, time);
+						this.activeId[name] = id;
+					}
+					else {
+						clearInterval(this.activeId[name]);
+						delete this.activeId[name];
+						this.roundDash(name, time, st, dash);
+					}
 				}
 				else {
 					clearInterval(this.activeId[name]);
 					delete this.activeId[name];
 					el.conf.dash = [];
 					this.elements.set(name, el);
-					this.draw();
 				}
 			}
 			else {
@@ -317,16 +330,15 @@ function dataCanvas(can, arrel = new Map(), activ = new Map()) {
 					for (const key in this.activeId) {
 						if (this.activeId.hasOwnProperty(key)) {
 							const id = this.activeId[key];
-							delete this.activeId[key];
 							clearInterval(id);
 							let el = this.elements.get(key);
 							el.conf.dash = [];
-							this.elements.set(name, el);
+							delete this.activeId[key];
 						}
 					}
-					this.draw();
 				}
 			}
+			this.draw(false, true);
 			return this.activeId;
 		},
 		// проверяет над каким элементом находится данная точка
@@ -345,11 +357,11 @@ function dataCanvas(can, arrel = new Map(), activ = new Map()) {
 								if (rs.indexOf(e.name) == -1 && !(e.x1 == bx && e.y1 == py) && !(e.x2 == bx && e.y2 == py)) {
 									rs.push(e.name);
 									s = [bx, e.name];
-									// this.test(bx, py,'green');
+									// this.test(bx, py, 'green');
 								}
 								else if (rs.indexOf(e.name) != -1) {
 									rs.splice(rs.indexOf(e.name), 1);
-									// this.test(bx, py, 'red',5,4);
+									// this.test(bx, py, 'red', 5, 4);
 								}
 							}
 						});
@@ -372,17 +384,29 @@ function dataCanvas(can, arrel = new Map(), activ = new Map()) {
 		},
 		// удалить элемент из elements и event
 		remove: function (name, update = true) {
-			if (this.elements.has(name)) {
-				this.active.forEach((el, key) => {
-					el.forEach((e) => {
-						if (e.name == name) {
-							this.active.delete(key);
+			let obj = this.elements.has(name) ? this.elements.get(name) : { type: false };
+			if (obj.type != false) {
+				for (const key of obj.allPoint.keys()) {
+					let actEl = this.active.has(key) ? this.active.get(key) : false;
+					if (actEl) {
+						let res = [];
+						if (obj.type == 'c') {
+							actEl.forEach((el, k) => {
+								if (obj.genObj.indexOf(el.name) < 0) res.push(el);
+							});
 						}
-					});
-				});
+						else {
+							actEl.forEach((el, k) => {
+								if (name != el.name) res.push(el);
+							});
+						}
+						if (res.length != 0) this.active.set(key, res);
+						else this.active.delete(key);
+					}
+				}
 				this.elements.delete(name);
+				if (update) this.draw(false, true);
 			}
-			if (update) this.draw();
 		},
 		// обьелиняет элементы в один
 		combEl: function (objArr, genObj = false, name = false) {
@@ -390,21 +414,27 @@ function dataCanvas(can, arrel = new Map(), activ = new Map()) {
 			if (name) result.name = name;
 			else result.name = this.makeid(32);
 			result.arrObj = new Map();
-			result.genObj = new Map();
+			result.genObj = [];
+			result.allPoint = new Map();
 			objArr.forEach((n) => {
 				if (this.elements.has(n)) {
 					let el = this.elements.get(n);
 					el.parent = result.name;
 					result.arrObj.set(n, el);
+					if (genObj) {
+						genObj.forEach(gn => {
+							if (gn == n) {
+								el.point.forEach((g) => {
+									for (const key of g.map.keys()) result.allPoint.set(key, null);
+								});
+							}
+						});
+					}
 				}
 			});
 			if (genObj) {
 				genObj.forEach((n) => {
-					if (this.elements.has(n)) {
-						let el = this.elements.get(n);
-						el.parent = result.name;
-						result.genObj.set(n, el);
-					}
+					result.genObj.push(n);
 				});
 			}
 			else result.genObj = [];
