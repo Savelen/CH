@@ -87,26 +87,26 @@
 		can2.objectDetect();
 		// делаем элементы интерактивными
 		// ------------------------------------------------------------------------------------------------------
-		can.activeEl("Дом");
-		can.activeEl('time');
-		can.activeEl('элемент');
-		// can.activeEl('прямоугольник');
+		can.addActiveEl("Дом");
+		can.addActiveEl('time');
+		can.addActiveEl('элемент');
+		// can.addActiveEl('прямоугольник');
 
-		can2.activeEl('time');
-		can2.activeEl('Square');
+		can2.addActiveEl('time');
+		can2.addActiveEl('Square');
 
 
 		// анимация
 		// ------------------------------------------------------------------------------------------------------
 		can.roundDash("прямоугольник", 100, 60, [10, 15, 5]);
 		// can.roundDash("time", 1, 60, [10, 5]);
-		can.roundDash("time", 100, 60, [40, 20]);
+		can.roundDash("time", 10, 60, [40, 20],2);
 
 		// ----------------------
 		let dash = 100;
 		can.addEvent('time', "click", () => {
 			console.log("this is works!");
-			can.roundDash("time", dash, 999, [(10 + 0.5 * dash), (15 + 0.5 * dash), (5 + 0.5 * dash)]);
+			can.roundDash("time", dash, 999, [(10 + 0.5 * dash), (15 + 0.5 * dash), (5 + 0.5 * dash)],5);
 			dash -= 10 * ((dash > 0) ? 1 : -10);
 			console.log(dash);
 		});
@@ -125,7 +125,7 @@
 		// делает все элементы активными
 		// ------------------------------------------------------------------------------------------------------
 		// can.elements.forEach((e) => {
-		// 	can.activeEl(e.name);
+		// 	can.addActiveEl(e.name);
 		// });
 
 
