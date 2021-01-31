@@ -28,7 +28,7 @@
 
 		//создание canvas и определение его размера
 		let canvas = document.querySelector('#c1');
-		let canvas2 = document.querySelector('#c2');
+		// let canvas2 = document.querySelector('#c2');
 
 		// canvas.width = window.innerWidth - 46;
 		// canvas.height = window.innerHeight / 100 * 80 - 32;
@@ -37,14 +37,13 @@
 		canvas.width = window.innerWidth - 25;
 		canvas.height = window.innerHeight;
 
-		canvas2.style.border = "2px solid red";
-		canvas2.width = window.innerWidth - 25;
-		canvas2.height = window.innerHeight;
+		// canvas2.style.border = "2px solid red";
+		// canvas2.width = window.innerWidth - 25;
+		// canvas2.height = window.innerHeight;
 		let can = new CH(canvas);
-		let can2 = new CH(canvas2);
+		// let can2 = new CH(canvas2);
 
-		can2.roundDash('time');
-		can2.lock = 60;
+		// can2.roundDash('time');
 
 		// создание линий (тип "l")
 		// ------------------------------------------------------------------------------------------------------
@@ -53,9 +52,9 @@
 		can.drawLine({ name: "элемент" }, 20, 250, 30, 10, "blue", false);
 		// can.drawLine({ x: 140, y: 300, w: 200, h: 40, color: "red", name: "Square", fill: true });
 
-		can2.drawLine(false, 270, 240, 5, 50, null, false);
-		can2.drawLine(false, 20, 300, 30, 10, "blue", false);
-		can2.drawLine({ x: 140, y: 300, w: 200, h: 40, color: "red", name: "Square", fill: true });
+		// can2.drawLine(false, 270, 240, 5, 50, null, false);
+		// can2.drawLine(false, 20, 300, 30, 10, "blue", false);
+		// can2.drawLine({ x: 140, y: 300, w: 200, h: 40, color: "red", name: "Square", fill: true });
 
 		can.drawLine({ name: "окно фон 1" }, 310, 250, 60, 70, "orange", true);
 		can.drawLine({ name: "окно фон 2" }, 130, 250, 60, 70, "orange", true);
@@ -72,19 +71,35 @@
 		can.drawObj([[1300, 300], [1000, 300], [1000, 500]], { name: 'прямоугольник' });
 		can.drawObj([[600, 100], [800, 100], [700, 200], [600, 300], [800, 300]], { name: "time", color: "aqua" });
 
-		can2.drawObj([[600, 100], [800, 100], [700, 200], [600, 300], [800, 300]], { name: "time", color: "green" });
+		// ++++++ для анимации --------
+
+		can.drawObj([[1300, 300], [1000, 300], [1000, 500]], { name: 'прямоугольник1', color: 'green', fill: true, order: 2 });
+		can.drawObj([[600, 100], [800, 100], [700, 200], [600, 300], [800, 300]], { name: "time1", color: "red", fill: true });
+
+		can.drawObj([[1300, 300], [1000, 300], [1000, 500]], { name: 'прямоугольник2', color: 'blue', fill: true });
+		can.drawObj([[600, 100], [800, 100], [700, 200], [600, 300], [800, 300]], { name: "time2", color: "yellow", fill: true });
+
+		can.drawObj([[1300, 300], [1000, 300], [1000, 500]], { name: 'прямоугольник3', color: '#643', fill: true });
+		can.drawObj([[600, 100], [800, 100], [700, 200], [600, 300], [800, 300]], { name: "time3", color: "#da4", fill: true });
+
+		// ++++++ для анимации ----------
+
+		// can2.drawObj([[600, 100], [800, 100], [700, 200], [600, 300], [800, 300]], { name: "time", color: "green" });
 
 
 		// обьединяем элементы (тип "c")
 		// ------------------------------------------------------------------------------------------------------
-		can.combEl(["окно фон 1", "Рама 1"], ["окно фон 1"], "Окно 1");
-		can.combEl(["окно фон 2", "Рама 2"], ["окно фон 2"], "Окно 2");
-		can.combEl(["Стена", "Крыша", "Окно 1", "Окно 2", "Дверь", "Дверная ручка"], ["Стена", "Крыша"], "Дом");
+		can.combEl(["окно фон 1", "Рама 1"], { actObj: ["окно фон 1"], name: "Окно 1" });
+		can.combEl(["окно фон 2", "Рама 2"], { actObj: ["окно фон 2"], name: "Окно 2" });
+		can.combEl(["Стена", "Крыша", "Окно 1", "Окно 2", "Дверь", "Дверная ручка"], { actObj: ["Стена", "Крыша"], name: "Дом", order: 3 });
 
+		can.setOrder("time2", 3);
+		can.setOrder("time3", 2);
+		can.setOrder("time", 4);
 		// начало отслеживания
 		// ------------------------------------------------------------------------------------------------------
-		can.objectDetect();
-		can2.objectDetect();
+		can.objectDetectEvent();
+		// can2.objectDetect();
 		// делаем элементы интерактивными
 		// ------------------------------------------------------------------------------------------------------
 		can.addActiveEl("Дом");
@@ -92,54 +107,137 @@
 		can.addActiveEl('элемент');
 		// can.addActiveEl('прямоугольник');
 
-		can2.addActiveEl('time');
-		can2.addActiveEl('Square');
+		// can2.addActiveEl('time');
+		// can2.addActiveEl('Square');
 
-
+		// fps
+		// ------------------------------------------------------------------------------------------------------
+		document.addEventListener('fps', (event) => {
+			if (event.detail.canvas.id == "c1") {
+				document.querySelector('.FPS').querySelector('span').textContent = event.detail.fps;
+			}
+		})
 		// анимация
 		// ------------------------------------------------------------------------------------------------------
 		can.roundDash("прямоугольник", 100, 60, [10, 15, 5]);
 		// can.roundDash("time", 1, 60, [10, 5]);
-		can.roundDash("time", 10, 60, [40, 20],2);
+		can.roundDash("time", 10, 60, [40, 20], 2);
 
 		// ----------------------
 		let dash = 100;
 		can.addEvent('time', "click", () => {
 			console.log("this is works!");
-			can.roundDash("time", dash, 999, [(10 + 0.5 * dash), (15 + 0.5 * dash), (5 + 0.5 * dash)],5);
+			can.roundDash("time", dash, 999, [(10 + 0.5 * dash), (15 + 0.5 * dash), (5 + 0.5 * dash)], 5);
 			dash -= 10 * ((dash > 0) ? 1 : -10);
 			console.log(dash);
 		});
 		can.activeEventListener('click');
 
-		// let qqq = 1;
-		// let i = 1;
-		// setInterval(() => {
-		// 	if (qqq == 1) i = 1;
-		// 	else if (qqq == 100) i = -1;
-		// 	qqq += i;
-		// 	if (i == 1) can.moveObj("time", { right: 5 });
-		// 	else can.moveObj("time", { left: 5 });
-		// }, 1);
 
-		// делает все элементы активными
-		// ------------------------------------------------------------------------------------------------------
+		// // Сделать функцию движения по траектории и интервалом
+		let test = true;
+		let qqq = 1;
+		let max = 10;
+		let i = 1;
+		let cof = 1;
+		let time = 500;
+		let at = 0;
+		let count = 0;
+		let tt = 0;
+		let tta = 0;
+		setInterval(() => {
+			if (qqq == 1) {
+				if (test) tt = Date.now();
+				// console.time("move");
+				i = 1;
+			}
+			else if (qqq == max) {
+				i = -1;
+				// console.timeEnd('move');
+				if (test) {
+					tt = Date.now() - tt;
+					tta += tt;
+					count++;
+					if (count == 10) {
+						at = Math.floor(tta / count);
+						console.clear();
+						console.log(at);
+						console.log("time procssing = " + (at - max * time), "action = " + max * (can.elements.size - 1), "all object = " + (can.elements.size - 1));
+						tta = 0
+						count = 0;
+					}
+				}
+			}
+			qqq += i;
+			// console.time('move');
+			if (i != false) {
+				if (i == 1) {
+					// can.moveObj("time", { right: 42 * cof });
+					// can.moveObj('прямоугольник', { left: 42 * cof });
+					// can.moveObj("прямоугольник1", { right: 42 * cof });
+					// can.moveObj('time1', { left: 42 * cof });
+					// can.moveObj("time2", { right: 18 * cof });
+					// can.moveObj('прямоугольник2', { left: 18 * cof });
+					// can.moveObj("прямоугольник3", { right: 18 * cof });
+					// can.moveObj('time3', { left: 18 * cof });
+					let el = can.elements.entries();
+					for (let j = 0; j < can.elements.size; j++) {
+						can.moveObj(el.next().value[1], { right: 10 });
+					}
+				}
+				else {
+					// can.moveObj("time", { left: 42 * cof });
+					// can.moveObj('прямоугольник', { right: 42 * cof });
+					// can.moveObj("time1", { right: 42 * cof });
+					// can.moveObj('прямоугольник1', { left: 42 * cof });
+					// can.moveObj("time2", { left: 18 * cof });
+					// can.moveObj('прямоугольник2', { right: 18 * cof });
+					// can.moveObj("прямоугольник3", { left: 18 * cof });
+					// can.moveObj('time3', { right: 18 * cof });
+					let el = can.elements.entries();
+					for (let j = 0; j < can.elements.size; j++) {
+						can.moveObj(el.next().value[1], { left: 10 });
+					}
+				}
+				// console.timeEnd('move');
+			}
+		}, time);
+
+		// какой-то узор (i*2 элементов. для изменения поменять условие в цикдле для i)
+		// для проверки производительности (узор + анимация + манипуляция ограничение отрисовки (can.syncDraw()))
+		// // ------------------------------------------------------------------------------------------------------
+		// console.time('draw')
+		// for (let i = 0, j = 0; i < 20; i++, (j < 600) ? j += 2 : j = 0) {
+		// 	can.drawObj([[i, i+100 / 2], [i, i+150], [i + 130, j + 120], [i + 100, i / 2], [i + 100, i / 2], [i + 100, 10], [i + 50, j + 100], [i + 10, i / 2]], { color: "blue" });
+		// 	can.drawObj([[i+500 + 10, i / 2], [i+1000 + 10, i / 2 + 100], [i+500 + 50, j + 100], [i+500 + 10, i / 2], [i+700, i / 2], [i+600, i / 2 + 100], [i+400, j + 50], [i+800, i+500 / 2]], { color: "green" });
+		// }
+		// console.timeEnd("draw");
+
+		// ! в 2 раза легче
+
+		// console.time('draw')
+		// for (let i = 0, j = 0; i < 40; i++, (j < 600) ? j += 2 : j = 0) {
+		// 	can.drawObj([[i, i / 2], [i, i / 2 + 100], [i+200+100 + 50, j + 50], [i+500 + 10, i / 2]], { color: "blue" });
+		// 	can.drawObj([[i+500 + 10, i / 2], [i+600 + 10, i / 2 + 100], [i+700 + 50, j + 100], [i+1000 + 10, i / 2]], { color: "green" });
+		// }
+		// console.timeEnd("draw");
+
+		// ! иная версия
+
+		// console.time('draw')
+		// for (let i = 0, j = 0; i < 50; i++, (j < 600) ? j += 2 : j = 0) {
+		// 	can.drawObj([[i, i / 2], [i+100, i / 2 + 100], [i+200, j + 50]], { color: "blue" });
+		// 	can.drawObj([[i+300, i / 2], [500, i / 2], [i+600, j + 100]], { color: "green" });
+		// }
+		// console.timeEnd("draw");
+
+		// делает все элементы активными (Желательно не двигать болеее 100-50 (i = 50-40) простых объектов
+		// или 40-1 (i = 20-1) сложных одновременно раз в 50mc)
+		// 	------------------------------------------------------------------------------------------------------
 		// can.elements.forEach((e) => {
-		// 	can.addActiveEl(e.name);
+		// 	can.addActiveEl(e);
 		// });
 
-
-		// какой-то узор (5000 элементов. для изменения поменять условие в цикдле для i)
-		// для проверки производительности (узор + анимация + манипуляция ограничение отрисовки (can.lock))
-		// ------------------------------------------------------------------------------------------------------
-		// for (let i = 0, j = 0; i < 2500; i++, (j < 600) ? j += 2 : j = 0) {
-		// 	setTimeout(() => {
-		// 		can.drawObj([[i + 0, i / 2], [i, i / 2 + 100], [i, j + 50]], { color: "red" });
-		// 	}, 10);
-		// 	setTimeout(() => {
-		// 		can.drawObj([[i, i / 2 + 0], [i + 0, i / 2], [i, j + 100]], { color: "green" });
-		// 	}, 20);
-		// }
 	</script>
 </body>
 
