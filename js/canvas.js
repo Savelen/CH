@@ -29,13 +29,17 @@ class CH {
 		intervalId: false
 	}
 
-	constructor(can, arrel = new Map(), activ = new Map()) {
+	constructor(can, arrel = new Map(), active = new Map()) {
 		try {
 			this.canvas = can;
 			this.ctx = can.getContext("2d");
+			// дбавляем элементы
 			this.elements = arrel;
-			this.active = activ;
+			// Способ отслеживания положения мыши
+			this.active = active;
+			// отрисовка кадров в 1 сек
 			this.syncDraw(60);
+			// обновление позиции мыши
 			this.UpdatelastPoint(this.time.timeCheck * 1.9);
 			// ----------------
 		} catch (error) {
@@ -119,8 +123,6 @@ class CH {
 				let p = obj[i];
 				if (i == 0) this.ctx.moveTo(p.x1, p.y1);
 				else this.ctx.lineTo(p.x1, p.y1);
-				// this.test(p.x1, p.y1, "green", 3, 50);
-				// this.test(p.x2, p.y2, "red", 50, 3);
 			}
 			this.ctx.closePath();
 			if (conf.fill) this.ctx.fill();
@@ -217,7 +219,6 @@ class CH {
 		});
 		this.setOrder(conf.name, conf.order);
 	}
-
 	//генерация id
 	makeid(length) {
 		let name = '';
@@ -249,9 +250,11 @@ class CH {
 
 			let findedElements = this.checkPointX(x, y);
 
-			// для теста
-			document.querySelector(".act").querySelector("span").textContent = JSON.stringify(findedElements);
-			// ------------------------
+			document.dispatchEvent(new CustomEvent('actEl', {
+				bubbles: true,
+				detail: { actEl: findedElements, canvas: this.canvas }
+			}));
+
 			if (findedElements != 0) {
 				let winName = findedElements[0];
 				if (winName != this.activeName) {
@@ -272,43 +275,14 @@ class CH {
 			fun(event, this.detectPosition.click);
 		});
 	}
-	// даёт элемент из массива active
-	getActiveEl(x) {
-		if (this.active.has(x)) return this.active.get(x);
-		else return false;
-	}
 	getEl(name) {
 		if (typeof name === "object" && name.hasOwnProperty("type") && name.hasOwnProperty("name")) return name;
 		if (this.elements.has(name)) return this.elements.get(name);
 		else return false;
 	}
-	getObjPoint(obj) {
-		obj = this.getEl(obj);
-		if (obj != false) {
-			let point = obj.point.map((point) => {
-				return [point.x1, point.y1, point.x2, point.y2];
-			});
-			return point;
-		}
-		else return false;
-	}
 	// возвращает массив с точками из линий
-	pointGet(obj, comb = false) {
-		if (!comb) obj = this.getEl(obj);
-		if (obj.type == "u") {
-			let res = new Map();
-			obj.actObj.forEach(o => {
-				let map = this.pg(obj.arrObj.get(o), true);
-				if (res.size == 0) res = map;
-				else {
-					map.forEach((cx, y) => {
-						if (res.has(y)) res.set(y, [y, res.get(y), cx]);
-						else res.set(y, cx);
-					})
-				}
-			});
-			obj.allPoint = res;
-		}
+	pointGet(obj) {
+		obj = this.getEl(obj); // Элемент не должен является частью комбинированого элемента ('u')
 		if (obj !== false) {
 			let result = new Map();
 			// проходимся по прямым
@@ -369,43 +343,40 @@ class CH {
 		if (data != false && data.active == false) {
 			if (data.type == "u") {
 				data.active = true;
-				let allPoint = new Map();
-				data.actObj.forEach((e) => {
-					this.addActiveEl(data.arrObj.get(e));
-					data.arrObj.get(e).allPoint.forEach((point, key) => {
-						allPoint.set(key, point);
-					});
-				});
-				data.allPoint = allPoint;
+				data.actObj.forEach((e) => this.addActiveEl(data.arrObj.get(e)));
 			}
-
-			// Добавление обЪекта в активные элементы
 			else {
-				// Добавление точек линий в элеиент
-				// console.time('PG');
-				this.pointGet(data);
-				// console.timeEnd('PG');
-				// console.log(data.name);
-				// Полученные данные добавляем в Active
-				data.allPoint.forEach((xContain, y) => {
-					xContain.forEach(x => {
-						if (this.active.has(y)) {
-							// создаём\Дополняем данные о x
-							let actEl = this.active.get(y);
-							if (actEl.has(x)) actEl.set(x, [...new Set([...actEl.get(x), data.name])]);
-							else actEl.set(x, [data.name]);
-							// записываем данные
-							this.active.set(y, actEl);
+				data.point.forEach((line) => {
+					let keyY = Math.min(line.y1, line.y2);
+					let keyX = Math.min(line.x1, line.x2);
+					let maxY = Math.max(line.y1, line.y2);
+					let maxX = Math.max(line.x1, line.x2);
+					// новый элемент
+					if (!this.active.has(keyY)) {
+						let map = new Map();
+						let el = new Map();
+						el.set(data.name, [line]);
+						map.set(keyX, el);
+						this.active.set(keyY, map);
+					}
+					// добовление к существующему элементу
+					else {
+						let mapX = this.active.get(keyY);
+						if (mapX.has(keyX)) {
+							let el = mapX.get(keyX);
+							if (el.has(data.name)) el.get(data.name).push(line);
+							else el.set(data.name, [line]);
 						}
 						else {
-							// новая запись о y
-							let map = new Map().set(x, [data.name]);
-							this.active.set(y, map);
+							let el = new Map();
+							el.set(data.name, [line]);
+							mapX.set(keyX, el);
 						}
-					});
+					}
 				});
-				data.active = true; // данный обЪект стал активным
+				data.active = true;
 			}
+
 		}
 	}
 	// анимация "бегающие муравьи" для обьектов типа "o"
@@ -470,25 +441,58 @@ class CH {
 	// проверяет над каким элементом находится данная точка
 	checkPointX(x, y) {
 		let result = [];
-		let pointX = this.getActiveEl(y); // информация об x н
-		// console.log(pointX);
-		if (pointX !== false) {
-			let left = {};
-			let right = {};
-			pointX.forEach((point, xPosition) => {
-				if (xPosition < x) {
-					point.forEach(name => left[name] = left.hasOwnProperty(name) ? left[name] + 1 : 1);
-				}
-				else if (xPosition > x) {
-					point.forEach(name => right[name] = right.hasOwnProperty(name) ? right[name] + 1 : 1);
-				}
-			});
-			for (const key in left) {
-				const quantity = left[key];
-				// console.log(((quantity + right[key]) % 2), quantity, right[key]);
-				if (right.hasOwnProperty(key) && ((quantity + right[key]) % 2) === 0) {
-					result.push(key);
-				}
+		let left = {};
+		let right = {};
+		this.active.forEach((mxCon, my) => {
+			if (my <= y) {
+				mxCon.forEach((obj, mx) => {
+					obj.forEach((points, name) => {
+						points.forEach(point => {
+							if (Math.max(point.y1, point.y2) >= y) {
+								let maxx = Math.max(point.x1, point.x2);
+								if (x >= maxx && x >= mx) {
+									left[name] = left.hasOwnProperty(name) ? left[name] + 1 : 1;
+								}
+								else if (x <= maxx && x <= mx) {
+									right[name] = right.hasOwnProperty(name) ? right[name] + 1 : 1;
+								}
+								else {
+									let slope = (point.y2 - point.y1) / (point.x2 - point.x1);
+									let c = point.y1 - point.x1 * slope;
+									let newY = slope * x + c;
+									// направление и сторона прямой
+									if (y <= newY) {
+										if (c >= 0) {
+											right[name] = right.hasOwnProperty(name) ? right[name] + 1 : 1;
+										}
+										else {
+											left[name] = left.hasOwnProperty(name) ? left[name] + 1 : 1;
+										}
+									}
+									else if (y > newY) {
+										if (c >= 0) {
+											left[name] = left.hasOwnProperty(name) ? left[name] + 1 : 1;
+										}
+										else {
+											right[name] = right.hasOwnProperty(name) ? right[name] + 1 : 1;
+										}
+
+									}
+
+								}
+							}
+						});
+					})
+
+				});
+			}
+		});
+
+		// Отсекаем чётное
+		for (const key in left) {
+			const quantity = left[key];
+			if (right.hasOwnProperty(key) && ((quantity + right[key]) % 2) === 0) {
+				result.push(key);
 			}
 		}
 		return result;
@@ -508,35 +512,35 @@ class CH {
 		}
 	}
 	// удаление объекта из активных
-	removeAct(name) {
-		let obj = this.getEl(name);
+	removeAct(name, sub = false) {
+		let obj;
+		if (!sub) obj = this.getEl(name);
+		else obj = name;
 		if (obj != false && obj.active == true) {
-			// Имена на удаление
-			let nameArr = [];
 			if (obj.type == "u") obj.actObj.forEach(nameObj => {
-				nameArr.push(nameObj);
 				let subObj = obj.arrObj.get(nameObj);
-				// помечаем как не активный элемент
-				subObj.active = false;
+				this.removeAct(subObj, true);
 			});
-			else nameArr = [name];
-			// начало удаление, получаем кординаты (x,y)
-			obj.allPoint.forEach((cx, y) => {
-				cx.forEach((x) => {
-					// Получили (x,y), удаляем имена из массивов
-					if (this.active.has(y)) {
-						let pointX = this.active.get(y);
-						let actEl = pointX.get(x);
-						if (typeof actEl == "object") {
-							nameArr.forEach(n => actEl.splice(actEl.indexOf(n), 1));
-							// сохраняем и подчищаем (если нужно)
-							if (actEl.length == 0) pointX.delete(x);
-							if (pointX.size == 0) this.active.delete(y);
-							else this.active.set(y, pointX);
+			else {
+				// начало удаление, получаем кординаты (x,y)
+				obj.point.forEach((point) => {
+					let my = Math.min(point.y1, point.y2);
+					let mx = Math.min(point.x1, point.x2);
+					if (this.active.has(my)) {
+						let xCon = this.active.get(my);
+						xCon.forEach((lineCon, n) => {
+							if (n = mx) {
+								if (lineCon.has(obj.name)) lineCon.delete(obj.name);
+								if (lineCon.size == 0) xCon.delete(n);
+							}
+						});
+						if (xCon.size == 0) {
+							this.active.delete(my);
 						}
 					}
-				});
-			})
+				})
+			}
+			// помечаем как не активный элемент
 			obj.active = false;
 		}
 	}
@@ -662,22 +666,9 @@ class CH {
 			clearInterval(this.syncId);
 			this.frame.lock = fps;
 			let time = Math.floor(1000 / fps);
-			time = Math.floor(((time >= 1000) ? 500 : (time < 5) ? 5 : time) /2.5);
+			time = Math.floor(((time >= 1000) ? 500 : (time < 5) ? 5 : time) / 2.5);
 			this.syncId = setInterval(() => {
-				if (!this.frame.drawNow) {
-					// console.time("FPS");
-					this.draw();
-					// console.timeEnd("FPS");
-					// ! test ---------------------------
-					// let m = 1
-					// this.active.forEach((e, y) => {
-					// 	e.forEach((ee, x) => {
-					// 		m *= -1;
-					// 		this.test(x, y, ((m == 1) ? "red" : "green"), 5, 5)
-					// 	});
-					// });
-					// !_________________________________
-				}
+				if (!this.frame.drawNow) this.draw();
 			}, time);
 		}
 		else clearInterval(this.syncId);
@@ -730,12 +721,3 @@ class CH {
 
 	}
 }
-
-/**
- * ? Создачть приоритеты отрисовки (READY)
- * ? Добавить возможность добавлять изображения (Класс "i")
- * ? Добавть возможноссть движения объектов класса "u" (READY)
- * ? Добавить возможность добавлять ивенты к классу "u"
- * ? Добавление окружностей (класс "c")
- * ? Добавить новый способ обработки позиции мыши
- */
