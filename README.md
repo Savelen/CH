@@ -1,4 +1,4 @@
-# CH (Canvas Halper)
+# CH (Canvas Helper)
 
 ## Начало работы
 
