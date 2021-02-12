@@ -95,6 +95,14 @@
 				document.querySelector(".act").querySelector("span").textContent = JSON.stringify(event.detail.actEl);
 			}
 		});
+		document.addEventListener("mausePosition", (event) => {
+			if (event.detail.canvas.id == "c1") {
+				document.querySelectorAll("span").forEach((s) => {
+					if (s.closest("div").className == "x") s.textContent = event.detail.position.x;
+					if (s.closest("div").className == "y") s.textContent = event.detail.position.y;
+				});
+			}
+		});
 		// анимация
 		// ------------------------------------------------------------------------------------------------------
 		can.roundDash("прямоугольник", 100, 60, [10, 15, 5]);
@@ -152,13 +160,13 @@
 				if (i == 1) {
 					let el = can.elements.entries();
 					for (let j = 0; j < can.elements.size; j++) {
-						can.moveObj(el.next().value[1], { left: j*5 });
+						can.moveObj(el.next().value[1], { left: j * 5 });
 					}
 				}
 				else {
 					let el = can.elements.entries();
 					for (let j = 0; j < can.elements.size; j++) {
-						can.moveObj(el.next().value[1], { right: j*5 });
+						can.moveObj(el.next().value[1], { right: j * 5 });
 					}
 				}
 				// console.timeEnd('move');

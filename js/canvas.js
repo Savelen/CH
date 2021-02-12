@@ -9,7 +9,6 @@ class CH {
 	time = {
 		startTime: Date.now(), // начало работы скрипта
 		timeCount: 0,
-		timeCheck: 30, // минимальный промежуток между проверкой положении мыши
 		lastCheck: Date.now() //
 	}
 	frame = {
@@ -24,6 +23,7 @@ class CH {
 	detectPosition = {
 		checkPosition: true,
 		click: true,
+		timeCheck: 30, // минимальный промежуток между проверкой положении мыши
 		lastX: 0,
 		lastY: 0,
 		intervalId: false
@@ -40,7 +40,7 @@ class CH {
 			// отрисовка кадров в 1 сек
 			this.syncDraw(60);
 			// обновление позиции мыши
-			this.UpdatelastPoint(this.time.timeCheck * 1.9);
+			this.UpdatelastPoint(this.detectPosition.timeCheck * 1.9);
 			// ----------------
 		} catch (error) {
 			console.log("When initialing the object was error, check arguments.");
@@ -49,13 +49,13 @@ class CH {
 	}
 
 	// рисуем всё или 1 обьект (по имени или обЪекту) используя на drawEL
-	draw(element = false, around = false) {
+	draw(element = false) {
 		this.frame.drawNow = true;
 		let show = false;
 		let time = Date.now() - this.time.startTime;
 		let timeNow = time - (this.time.timeCount * 1000);
 		let timePause = 1000 / this.frame.lock;
-		if ((!element && (timeNow >= (timePause * this.frame.lockCount) && timeNow <= 1000)) || around) {
+		if (!element && (timeNow >= (timePause * this.frame.lockCount) && timeNow <= 1000)) {
 			this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 			this.frame.allOrder.forEach(order => {
 				this.frame.drawOrder.get(order).forEach((val, name) => {
@@ -231,15 +231,14 @@ class CH {
 		cy = (cy < 0) ? 0 : cy;
 		let y = Math.floor(event.pageY - cy);
 		let x = Math.floor(event.pageX - this.canvas.offsetLeft);
-		// для теста
-		document.querySelectorAll("span").forEach((s) => {
-			let py = (y < 0) ? Math.abs(y) : 0;
-			if (s.closest("div").className == "x") s.textContent = x + ` | ${event.pageX} |` + `${Math.floor(this.canvas.offsetLeft)}`;
-			if (s.closest("div").className == "y") s.textContent = Math.floor(y + py) + ` | ${event.pageY} | ${cy}`;
-		});
+		//  позиция мыши
+		document.dispatchEvent(new CustomEvent('mausePosition', {
+			bubbles: true,
+			detail: { position: { x: x, y: y }, canvas: this.canvas }
+		}));
 		// -------------------
 		// Прошёл ли минимальный заданный интервал после последней проверкой
-		let interval = ((Date.now() - this.time.lastCheck) >= this.time.timeCheck);
+		let interval = ((Date.now() - this.time.lastCheck) >= this.detectPosition.timeCheck);
 		// последняя позиции мыши
 		this.detectPosition.lastX = x;
 		this.detectPosition.lastY = y;
@@ -249,12 +248,12 @@ class CH {
 			this.time.lastCheck = Date.now();
 
 			let findedElements = this.checkPointX(x, y);
-
+			// элементы
 			document.dispatchEvent(new CustomEvent('actEl', {
 				bubbles: true,
 				detail: { actEl: findedElements, canvas: this.canvas }
 			}));
-
+			// ----------------
 			if (findedElements != 0) {
 				let winName = findedElements[0];
 				if (winName != this.activeName) {
@@ -277,7 +276,7 @@ class CH {
 	}
 	getEl(name) {
 		if (typeof name === "object" && name.hasOwnProperty("type") && name.hasOwnProperty("name")) return name;
-		if (this.elements.has(name)) return this.elements.get(name);
+		else if (this.elements.has(name)) return this.elements.get(name);
 		else return false;
 	}
 	// возвращает массив с точками из линий
@@ -512,10 +511,9 @@ class CH {
 		}
 	}
 	// удаление объекта из активных
-	removeAct(name, sub = false) {
+	removeAct(name) {
 		let obj;
-		if (!sub) obj = this.getEl(name);
-		else obj = name;
+		obj = this.getEl(name);
 		if (obj != false && obj.active == true) {
 			if (obj.type == "u") obj.actObj.forEach(nameObj => {
 				let subObj = obj.arrObj.get(nameObj);
@@ -589,8 +587,21 @@ class CH {
 			return true;
 		}
 		else {
-			//
-			return false;
+			obj.actObj.forEach(name => this.addEvent(obj.arrObj.get(name), type, f));
+		}
+	}
+	removeEvent(obj, type) {
+		// Получаем объект
+		obj = this.getEl(obj);
+		// Проверка, был ли получен объект
+		if (obj == false) return false;
+		if (obj.type !== "u") {
+			if (obj.hasOwnProperty("event")) {
+				if (obj.event.hasOwnProperty(type)) delete obj.event[type];
+			}
+		}
+		else {
+			obj.actObj.forEach(name => this.removeEvent(obj.arrObj.get(name), type));
 		}
 	}
 	// Запуск функции ивента
@@ -610,7 +621,7 @@ class CH {
 		try {
 			// записываем функции слущателя
 			this.eventList[type] = () => this.runEventFunction(this.activeName, type);
-			// доьавляем слушатель
+			// добавляем слушатель
 			this.canvas.addEventListener(type, this.eventList[type]);
 			return true;
 		}
@@ -621,10 +632,10 @@ class CH {
 	}
 	// Удаления слушателя
 	removeEventListener(type) {
-		delete this.eventList[type];
+		this.canvas.removeEventListener(type, this.eventList[type]);
 	}
-	moveObj(obj, move = { 'down': 0, 'up': 0, 'left': 0, 'right': 0 }, inside = false) {
-		if (!inside) obj = this.getEl(obj);
+	moveObj(obj, move = { 'down': 0, 'up': 0, 'left': 0, 'right': 0 }) {
+		obj = this.getEl(obj);
 		if (obj != false) {
 			// сдвиг по ширене и высоте
 			let height = (!isNaN(Number(move.down)) ? move.down : 0) - (!isNaN(Number(move.up)) ? move.up : 0);
@@ -653,7 +664,7 @@ class CH {
 			else if (obj.type == "u") {
 				if (active) this.removeAct(obj.name);
 				obj.arrObj.forEach(el => {
-					this.moveObj(el, move, true);
+					this.moveObj(el, move);
 				});
 				if (active) this.addActiveEl(this.getEl(obj.name));
 			}
